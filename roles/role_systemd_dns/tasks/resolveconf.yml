@@ -1,0 +1,33 @@
+---
+
+- name: show current dns settings
+  shell: cat /etc/resolv.conf | grep nameserver
+
+- name: Update primary dns server
+  become: yes
+  lineinfile:
+    path: /etc/resolvconf/resolv.conf.d/head
+    state: present
+    backup: no
+    regexp: '^[# ]*{{ item.search }}\s+.*'
+    line: '{{ item.replace }}'
+  register: change_dns_items
+  with_items:
+    - { search: 'nameserver', replace: 'nameserver {{systemd_dns_primary}}' }
+
+- name: update resolvconf settings
+  become: yes
+  command: resolvconf -u
+
+- name: Restart systemd-resolved service
+  systemd:
+    name: resolvconf
+    state: restarted
+  when: change_dns_items.changed
+
+- name: show current dns settings
+  shell: cat /etc/resolv.conf | grep nameserver
+
+
+
+

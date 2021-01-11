@@ -1,0 +1,8 @@
+---
+- name: Reload systemd-resolved
+  systemd:
+    name: systemd-resolved
+    state: reloaded
+
+
+

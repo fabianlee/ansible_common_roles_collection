@@ -1,0 +1,41 @@
+---
+- name: Install dns packages
+  package:
+    name:
+      - dnsutils
+    state: present
+    #update_cache: true
+
+- name: show current dns settings1
+  become: yes
+  shell: systemd-resolve --status --no-pager | grep 'DNS Servers'
+
+- name: Update primary dns server
+  become: yes
+  lineinfile:
+    path: /etc/systemd/resolved.conf
+    state: present
+    backup: no
+    regexp: '^[# ]*{{ item.search }}\s*=\s*'
+    line: '{{ item.replace }}'
+  register: change_dns_items
+  with_items:
+    - { search: 'DNS', replace: 'DNS={{systemd_dns_primary}}' }
+    - { search: 'Domains', replace: 'Domains={{systemd_dns_domains}}' }
+
+- name: debug did any DNS items change
+  debug: msg="{{change_dns_items.changed}}"
+
+- name: Restart systemd-resolved service
+  systemd:
+    name: systemd-resolved
+    state: restarted
+    daemon_reload: yes
+  when: change_dns_items.changed
+
+- name: show new dns settings2
+  become: yes
+  shell: systemd-resolve --status --no-pager | grep 'DNS Servers'
+  when: change_dns_items.changed
+
+
